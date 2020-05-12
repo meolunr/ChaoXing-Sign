@@ -11,6 +11,11 @@ import (
 )
 
 func main() {
+	bytes, _ := ioutil.ReadFile("profile.json")
+	profile := &Profile{}
+	_ = json.Unmarshal(bytes, profile)
+
+	login(profile.Username, profile.Password)
 }
 
 func login(username string, password string) {
@@ -20,7 +25,7 @@ func login(username string, password string) {
 	params.Set("code", password)
 	loginUrl.RawQuery = params.Encode()
 
-	request, _ := http.NewRequest("POST", loginUrl.String(), nil)
+	request, _ := http.NewRequest(http.MethodPost, loginUrl.String(), nil)
 	request.Header.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 10; Pixel 2) com.chaoxing.mobile/ChaoXingStudy_3_4.3.7_android_phone_497_27 (@Kalimdor)_aed7e7f96119453a9c9727776a940d5e")
 
 	cookieJar, _ := cookiejar.New(nil)
@@ -44,4 +49,10 @@ func bodyClose(body io.Closer) {
 type Response struct {
 	Message string `json:"mes"`
 	Status  bool   `json:"status"`
+}
+
+type Profile struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Cookies  string `json:"cookies"`
 }

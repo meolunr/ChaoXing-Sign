@@ -17,3 +17,6 @@
 
 # Generated files
 bin/
+
+# User configs
+profile.json
