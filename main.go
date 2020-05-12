@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 )
 
@@ -22,7 +23,10 @@ func login(username string, password string) {
 	request, _ := http.NewRequest("POST", loginUrl.String(), nil)
 	request.Header.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 10; Pixel 2) com.chaoxing.mobile/ChaoXingStudy_3_4.3.7_android_phone_497_27 (@Kalimdor)_aed7e7f96119453a9c9727776a940d5e")
 
-	client := http.Client{}
+	cookieJar, _ := cookiejar.New(nil)
+	client := http.Client{
+		Jar: cookieJar,
+	}
 	response, _ := client.Do(request)
 	defer bodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
@@ -30,7 +34,7 @@ func login(username string, password string) {
 	jsonResp := &Response{}
 	_ = json.Unmarshal(contentBytes, jsonResp)
 
-	fmt.Println(jsonResp.Message)
+	fmt.Println(cookieJar)
 }
 
 func bodyClose(body io.Closer) {
