@@ -10,12 +10,26 @@ import (
 	"net/url"
 )
 
-func main() {
-	bytes, _ := ioutil.ReadFile("profile.json")
-	profile := &Profile{}
-	_ = json.Unmarshal(bytes, profile)
+var profile *Profile
+var client *http.Client
 
+func main() {
+	loadProfile()
+	newHttpClient()
 	login(profile.Username, profile.Password)
+}
+
+func loadProfile() {
+	bytes, _ := ioutil.ReadFile("profile.json")
+	profile = &Profile{}
+	_ = json.Unmarshal(bytes, profile)
+}
+
+func newHttpClient() {
+	jar, _ := cookiejar.New(nil)
+	client = &http.Client{
+		Jar: jar,
+	}
 }
 
 func login(username string, password string) {
@@ -25,13 +39,16 @@ func login(username string, password string) {
 	params.Set("code", password)
 	loginUrl.RawQuery = params.Encode()
 
+	// Use when debugging
+	if profile.Cookies != nil {
+		client.Jar.SetCookies(loginUrl, profile.Cookies)
+		fmt.Println("读取 cookies 成功")
+		return
+	}
+
 	request, _ := http.NewRequest(http.MethodPost, loginUrl.String(), nil)
 	request.Header.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 10; Pixel 2) com.chaoxing.mobile/ChaoXingStudy_3_4.3.7_android_phone_497_27 (@Kalimdor)_aed7e7f96119453a9c9727776a940d5e")
 
-	cookieJar, _ := cookiejar.New(nil)
-	client := http.Client{
-		Jar: cookieJar,
-	}
 	response, _ := client.Do(request)
 	defer bodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
@@ -39,7 +56,9 @@ func login(username string, password string) {
 	jsonResp := &Response{}
 	_ = json.Unmarshal(contentBytes, jsonResp)
 
-	fmt.Println(cookieJar)
+	if jsonResp.Status == true {
+		fmt.Println("用户登录成功")
+	}
 }
 
 func bodyClose(body io.Closer) {
@@ -52,7 +71,7 @@ type Response struct {
 }
 
 type Profile struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Cookies  string `json:"cookies"`
+	Username string         `json:"username"`
+	Password string         `json:"password"`
+	Cookies  []*http.Cookie `json:"cookies"`
 }
