@@ -17,6 +17,7 @@
 
 # Generated files
 bin/
+pkg/
 
 # User configs
 profile.json
