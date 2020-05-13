@@ -6,42 +6,43 @@ import (
 	"io/ioutil"
 	"net/http"
 	"netutil"
+	"os"
+	"strconv"
 )
 
-var courses []*Course
-
-func ObtainCourses(client *http.Client) {
+func ObtainCourses(client *http.Client) (courses []*Course) {
 	request := netutil.NewRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
 	response, _ := client.Do(request)
 	defer netutil.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 
 	jsonResp := &CoursesResponse{}
-	_ = json.Unmarshal(contentBytes, jsonResp)
+	err := json.Unmarshal(contentBytes, jsonResp)
+
+	if err != nil {
+		fmt.Println("Obtain course failed")
+		os.Exit(0)
+	}
 
 	if jsonResp.Result == 1 {
 		// Get courses success
-		fmt.Println(jsonResp.ChannelList)
-		courses = make([]*Course, len(jsonResp.ChannelList))
+		courses = make([]*Course, 0, len(jsonResp.ChannelList))
 
 		for _, channel := range jsonResp.ChannelList {
 			course := &Course{
-				ClassId:    channel.Content.ClassId,
-				CourseId:   channel.Content.Course.Data[0].CourseId,
+				ClassId:    strconv.Itoa(channel.Content.ClassId),
+				CourseId:   strconv.Itoa(channel.Content.Course.Data[0].CourseId),
 				CourseName: channel.Content.Course.Data[0].CourseName,
 			}
 			courses = append(courses, course)
 		}
 	}
-
-	for _, cours := range courses {
-		fmt.Println(cours)
-	}
+	return
 }
 
 type Course struct {
-	ClassId    int `json:"id"`
-	CourseId   int
+	ClassId    string
+	CourseId   string
 	CourseName string
 }
 

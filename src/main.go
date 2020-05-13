@@ -15,13 +15,18 @@ import (
 
 var profile *Profile
 var client *http.Client
+
 var uid string
+var courses []*course.Course
 
 func main() {
 	loadProfile()
 	newHttpClient()
 	login(profile.Username, profile.Password)
-	course.ObtainCourses(client)
+	courses = course.ObtainCourses(client)
+	for _, cours := range courses {
+		fmt.Println(cours)
+	}
 }
 
 func loadProfile() {
