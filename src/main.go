@@ -15,6 +15,7 @@ import (
 
 var profile *Profile
 var client *http.Client
+var uid string
 
 func main() {
 	loadProfile()
@@ -67,10 +68,20 @@ func login(username string, password string) {
 	_ = json.Unmarshal(contentBytes, jsonResp)
 
 	if jsonResp.Status == true {
+		uid = getUid(response)
 		fmt.Println("User login successfully")
 	} else {
 		fmt.Println("User login failed, message: ", jsonResp.Message)
 	}
+}
+
+func getUid(response *http.Response) string {
+	for _, cookie := range response.Cookies() {
+		if cookie.Name == "UID" {
+			return cookie.Value
+		}
+	}
+	return ""
 }
 
 type Profile struct {
