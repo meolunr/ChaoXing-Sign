@@ -17,7 +17,7 @@ func main() {
 	loadProfile()
 	newHttpClient()
 	login(profile.Username, profile.Password)
-	//getCourses()
+	getCourses()
 }
 
 func loadProfile() {
@@ -40,13 +40,6 @@ func login(username string, password string) {
 	params.Set("code", password)
 	loginUrl.RawQuery = params.Encode()
 
-	// Use when debugging
-	if profile.Cookies != nil {
-		client.Jar.SetCookies(loginUrl, profile.Cookies)
-		fmt.Println("读取 cookies 成功")
-		return
-	}
-
 	request, _ := http.NewRequest(http.MethodPost, loginUrl.String(), nil)
 	request.Header.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 10; Pixel 2) com.chaoxing.mobile/ChaoXingStudy_3_4.3.7_android_phone_497_27 (@Kalimdor)_aed7e7f96119453a9c9727776a940d5e")
 
@@ -58,7 +51,7 @@ func login(username string, password string) {
 	_ = json.Unmarshal(contentBytes, jsonResp)
 
 	if jsonResp.Status == true {
-		fmt.Println("用户登录成功")
+		fmt.Println("User login successfully")
 	}
 }
 
@@ -83,7 +76,6 @@ type Response struct {
 }
 
 type Profile struct {
-	Username string         `json:"username"`
-	Password string         `json:"password"`
-	Cookies  []*http.Cookie `json:"cookies"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
