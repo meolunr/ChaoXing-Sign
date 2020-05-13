@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"netutil"
 	"os"
 	"strconv"
@@ -38,6 +39,22 @@ func ObtainCourses(client *http.Client) (courses []*Course) {
 		}
 	}
 	return
+}
+
+func ObtainTaskList(course *Course, uid string, client *http.Client) {
+	taskListUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
+	params := url.Values{}
+	params.Set("classId", course.ClassId)
+	params.Set("courseId", course.CourseId)
+	params.Set("uid", uid)
+	taskListUrl.RawQuery = params.Encode()
+
+	request := netutil.NewRequest(http.MethodGet, taskListUrl.String())
+	response, _ := client.Do(request)
+
+	defer netutil.BodyClose(response.Body)
+	contentBytes, _ := ioutil.ReadAll(response.Body)
+	fmt.Println(string(contentBytes))
 }
 
 type Course struct {

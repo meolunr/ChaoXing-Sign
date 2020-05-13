@@ -22,11 +22,10 @@ var courses []*course.Course
 func main() {
 	loadProfile()
 	newHttpClient()
+
 	login(profile.Username, profile.Password)
 	courses = course.ObtainCourses(client)
-	for _, cours := range courses {
-		fmt.Println(cours)
-	}
+	course.ObtainTaskList(courses[2], uid, client)
 }
 
 func loadProfile() {
