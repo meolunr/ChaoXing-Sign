@@ -29,7 +29,7 @@ func main() {
 
 	item := courses[2]
 	tasks := item.ObtainSignTasks(uid, client)
-	fmt.Println(len(tasks))
+	tasks[0].Sign(uid, client)
 }
 
 func loadProfile() {
