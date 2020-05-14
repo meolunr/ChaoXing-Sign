@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"netutil"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -23,7 +24,9 @@ func main() {
 	loadProfile()
 	newHttpClient()
 
-	login(profile.Username, profile.Password)
+	login()
+	obtainCourses()
+	//course.ObtainTaskList1(courses[5], uid, client)
 }
 
 func loadProfile() {
@@ -32,8 +35,8 @@ func loadProfile() {
 	err := json.Unmarshal(bytes, profile)
 
 	if err != nil {
-		fmt.Println("Profile read error")
-		fmt.Println("Please check the \"profile.json\" file")
+		fmt.Println("用户配置文件读取失败")
+		fmt.Println("请检查 profile.json")
 		os.Exit(0)
 	}
 }
@@ -45,22 +48,22 @@ func newHttpClient() {
 	}
 }
 
-func login(username string, password string) {
+func login() {
 	cxUrl, _ := url.Parse("https://passport2-api.chaoxing.com/v11/loginregister")
 	params := url.Values{}
-	params.Set("uname", username)
-	params.Set("code", password)
+	params.Set("uname", profile.Username)
+	params.Set("code", profile.Password)
 
 	cxUrl.RawQuery = params.Encode()
 	request := netutil.NewRequest(http.MethodPost, cxUrl.String())
 	response, err := client.Do(request)
 
 	if err != nil || response.StatusCode != http.StatusOK {
-		fmt.Println("Request for ChaoXing API failed")
-		fmt.Println("Try again in 10 seconds...")
+		fmt.Println("超星 API 请求失败")
+		fmt.Println("10 秒后自动重试...")
 
 		time.Sleep(time.Second * 10)
-		login(username, password)
+		login()
 		return
 	}
 
@@ -71,10 +74,45 @@ func login(username string, password string) {
 
 	if jsonResp.Status == true {
 		uid = getUid(response)
-		fmt.Println("User login successfully")
+		fmt.Println("登录成功")
 	} else {
-		fmt.Println("User login failed, message: ", jsonResp.Message)
+		fmt.Println("登录失败, message: ", jsonResp.Message)
 	}
+}
+
+func obtainCourses() {
+	request := netutil.NewRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
+	response, _ := client.Do(request)
+	defer netutil.BodyClose(response.Body)
+	contentBytes, _ := ioutil.ReadAll(response.Body)
+
+	jsonResp := &course.JsonResponse{}
+	err := json.Unmarshal(contentBytes, jsonResp)
+
+	if err != nil {
+		fmt.Println("获取课程失败")
+		os.Exit(0)
+	}
+
+	if jsonResp.Result == 1 {
+		// 获取课程成功
+		courses = make([]*course.Course, 0, len(jsonResp.ChannelList))
+
+		for _, channel := range jsonResp.ChannelList {
+			item := &course.Course{
+				ClassId: strconv.Itoa(channel.Content.Id),
+				Id:      strconv.Itoa(channel.Content.Course.Data[0].Id),
+				Name:    channel.Content.Course.Data[0].Name,
+			}
+			courses = append(courses, item)
+
+			fmt.Println("---------------------------------")
+			fmt.Println("ClassId:    ", item.ClassId)
+			fmt.Println("CourseId:   ", item.Id)
+			fmt.Println("CourseName: ", item.Name)
+		}
+	}
+	return
 }
 
 func getUid(response *http.Response) string {
