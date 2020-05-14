@@ -26,7 +26,10 @@ func main() {
 
 	login()
 	obtainCourses()
-	//course.ObtainTaskList1(courses[5], uid, client)
+
+	item := courses[2]
+	tasks := item.ObtainSignTasks(uid, client)
+	fmt.Println(len(tasks))
 }
 
 func loadProfile() {

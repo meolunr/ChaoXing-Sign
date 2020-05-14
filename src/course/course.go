@@ -7,64 +7,71 @@ import (
 	"net/http"
 	"net/url"
 	"netutil"
-	"os"
 	"strconv"
+	"task"
 )
 
-func ObtainCourses(client *http.Client) (courses []*Course) {
-	request := netutil.NewRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
-	response, _ := client.Do(request)
-	defer netutil.BodyClose(response.Body)
-	contentBytes, _ := ioutil.ReadAll(response.Body)
-
-	jsonResp := &CoursesResponse{}
-	err := json.Unmarshal(contentBytes, jsonResp)
-
-	if err != nil {
-		fmt.Println("Obtain course failed")
-		os.Exit(0)
-	}
-
-	if jsonResp.Result == 1 {
-		// Get courses success
-		courses = make([]*Course, 0, len(jsonResp.ChannelList))
-
-		for _, channel := range jsonResp.ChannelList {
-			course := &Course{
-				ClassId:    strconv.Itoa(channel.Content.ClassId),
-				CourseId:   strconv.Itoa(channel.Content.Course.Data[0].CourseId),
-				CourseName: channel.Content.Course.Data[0].CourseName,
-			}
-			courses = append(courses, course)
-		}
-	}
-	return
+type Course struct {
+	Id      string
+	Name    string
+	ClassId string
 }
 
-func ObtainTaskList(course *Course, uid string, client *http.Client) {
-	taskListUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
+func (course *Course) ObtainSignTasks(uid string, client *http.Client) []*SignTask {
+	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
 	params := url.Values{}
 	params.Set("classId", course.ClassId)
-	params.Set("courseId", course.CourseId)
+	params.Set("courseId", course.Id)
 	params.Set("uid", uid)
-	taskListUrl.RawQuery = params.Encode()
 
-	request := netutil.NewRequest(http.MethodGet, taskListUrl.String())
+	cxUrl.RawQuery = params.Encode()
+	request := netutil.NewRequest(http.MethodGet, cxUrl.String())
 	response, _ := client.Do(request)
 
 	defer netutil.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 
-	var jsonResp jsonResponse
+	var jsonResp task.JsonResponse
 	_ = json.Unmarshal(contentBytes, &jsonResp)
-	signTasks := filterSignTask(&jsonResp)
 
-	for _, task := range signTasks {
-		fmt.Println("======================")
-		fmt.Println(task.SignType)
+	return filterSignTask(course, &jsonResp)
+}
+
+/**
+过滤非签到任务
+*/
+func filterSignTask(course *Course, jsonResp *task.JsonResponse) []*SignTask {
+	signTasks := make([]*SignTask, 0)
+	for _, item := range jsonResp.ActiveList {
+		// 检查是否为未过期的签到任务
+		//if item.ActiveType == 2 && item.Status == 1 {
+		if item.ActiveType == 2 && item.Status == 2 { // 测试用
+			signTask := &SignTask{
+				Id:       strconv.Itoa(item.Id),
+				Referer:  item.Url,
+				SignType: item.NameOne,
+			}
+			signTasks = append(signTasks, signTask)
+
+			fmt.Printf("SignTask: %s, Course : %s\n", item.NameOne, course.Name)
+		}
 	}
+	return signTasks
+}
 
-	sign(signTasks[0], uid, client)
+type JsonResponse struct {
+	Result      int `json:"result"`
+	ChannelList []struct {
+		Content struct {
+			Id     int `json:"id"`
+			Course struct {
+				Data []struct {
+					Id   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"data"`
+			} `json:"course"`
+		} `json:"content"`
+	} `json:"channelList"`
 }
 
 func sign(task *SignTask, uid string, client *http.Client) {
@@ -89,30 +96,13 @@ func sign(task *SignTask, uid string, client *http.Client) {
 	fmt.Println(string(contentBytes))
 }
 
-func filterSignTask(jsonResp *jsonResponse) []*SignTask {
-	signTasks := make([]*SignTask, 0)
-	for _, task := range jsonResp.ActiveList {
-		// It's a sign task that has not expired
-		//if task.ActiveType == 2 && task.Status == 1 {
-		if task.ActiveType == 2 && task.Status == 2 {
-			signTask := &SignTask{
-				Id:       strconv.Itoa(task.Id),
-				Referer:  task.Url,
-				SignType: task.NameOne,
-			}
-			signTasks = append(signTasks, signTask)
-		}
-	}
-	return signTasks
-}
-
 type SignTask struct {
 	Id       string
 	Referer  string
 	SignType string
 }
 
-type jsonResponse struct {
+type jsonResponse1 struct {
 	ActiveList []struct {
 		Id         int    `json:"id"`
 		Status     int    `json:"status"`
@@ -120,25 +110,4 @@ type jsonResponse struct {
 		NameOne    string `json:"nameOne"`
 		Url        string `json:"url"`
 	} `json:"activeList"`
-}
-
-type Course struct {
-	ClassId    string
-	CourseId   string
-	CourseName string
-}
-
-type CoursesResponse struct {
-	Result      int `json:"result"`
-	ChannelList []struct {
-		Content struct {
-			ClassId int `json:"id"`
-			Course  struct {
-				Data []struct {
-					CourseId   int    `json:"id"`
-					CourseName string `json:"name"`
-				} `json:"data"`
-			} `json:"course"`
-		} `json:"content"`
-	} `json:"channelList"`
 }
