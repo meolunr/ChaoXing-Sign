@@ -24,8 +24,6 @@ func main() {
 	newHttpClient()
 
 	login(profile.Username, profile.Password)
-	courses = course.ObtainCourses(client)
-	course.ObtainTaskList(courses[5], uid, client)
 }
 
 func loadProfile() {
@@ -48,13 +46,13 @@ func newHttpClient() {
 }
 
 func login(username string, password string) {
-	loginUrl, _ := url.Parse("https://passport2-api.chaoxing.com/v11/loginregister")
+	cxUrl, _ := url.Parse("https://passport2-api.chaoxing.com/v11/loginregister")
 	params := url.Values{}
 	params.Set("uname", username)
 	params.Set("code", password)
-	loginUrl.RawQuery = params.Encode()
 
-	request := netutil.NewRequest(http.MethodPost, loginUrl.String())
+	cxUrl.RawQuery = params.Encode()
+	request := netutil.NewRequest(http.MethodPost, cxUrl.String())
 	response, err := client.Do(request)
 
 	if err != nil || response.StatusCode != http.StatusOK {
@@ -68,7 +66,7 @@ func login(username string, password string) {
 
 	defer netutil.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
-	jsonResp := &Response{}
+	jsonResp := &jsonResponse{}
 	_ = json.Unmarshal(contentBytes, jsonResp)
 
 	if jsonResp.Status == true {
@@ -93,7 +91,7 @@ type Profile struct {
 	Password string `json:"password"`
 }
 
-type Response struct {
+type jsonResponse struct {
 	Message string `json:"mes"`
 	Status  bool   `json:"status"`
 }
