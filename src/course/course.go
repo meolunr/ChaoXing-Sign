@@ -57,16 +57,46 @@ func ObtainTaskList(course *Course, uid string, client *http.Client) {
 
 	var jsonResp jsonResponse
 	_ = json.Unmarshal(contentBytes, &jsonResp)
-	filterSignTask(&jsonResp)
+	signTasks := filterSignTask(&jsonResp)
+
+	for _, task := range signTasks {
+		fmt.Println("======================")
+		fmt.Println(task.SignType)
+	}
+
+	sign(signTasks[0], uid, client)
+}
+
+func sign(task *SignTask, uid string, client *http.Client) {
+	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/pptSign/stuSignajax")
+	params := url.Values{}
+	params.Set("activeId", task.Id)
+	params.Set("uid", uid)
+	params.Set("latitude", "-1")
+	params.Set("longitude", "-1")
+	params.Set("appType", "15")
+	params.Set("clientip", "")
+	params.Set("fid", "")
+	params.Set("name", "")
+
+	cxUrl.RawQuery = params.Encode()
+	request := netutil.NewRequest(http.MethodGet, cxUrl.String())
+	request.Header.Set("Referer", task.Referer)
+	response, _ := client.Do(request)
+
+	defer netutil.BodyClose(response.Body)
+	contentBytes, _ := ioutil.ReadAll(response.Body)
+	fmt.Println(string(contentBytes))
 }
 
 func filterSignTask(jsonResp *jsonResponse) []*SignTask {
 	signTasks := make([]*SignTask, 0)
 	for _, task := range jsonResp.ActiveList {
 		// It's a sign task that has not expired
-		if task.ActiveType == 2 && task.Status == 1 {
+		//if task.ActiveType == 2 && task.Status == 1 {
+		if task.ActiveType == 2 && task.Status == 2 {
 			signTask := &SignTask{
-				Id:       task.Id,
+				Id:       strconv.Itoa(task.Id),
 				Referer:  task.Url,
 				SignType: task.NameOne,
 			}
@@ -77,7 +107,7 @@ func filterSignTask(jsonResp *jsonResponse) []*SignTask {
 }
 
 type SignTask struct {
-	Id       int
+	Id       string
 	Referer  string
 	SignType string
 }

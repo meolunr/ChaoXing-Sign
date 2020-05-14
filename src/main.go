@@ -25,7 +25,7 @@ func main() {
 
 	login(profile.Username, profile.Password)
 	courses = course.ObtainCourses(client)
-	course.ObtainTaskList(courses[2], uid, client)
+	course.ObtainTaskList(courses[5], uid, client)
 }
 
 func loadProfile() {
