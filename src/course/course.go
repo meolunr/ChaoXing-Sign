@@ -54,7 +54,42 @@ func ObtainTaskList(course *Course, uid string, client *http.Client) {
 
 	defer netutil.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(string(contentBytes))
+
+	var jsonResp jsonResponse
+	_ = json.Unmarshal(contentBytes, &jsonResp)
+	filterSignTask(&jsonResp)
+}
+
+func filterSignTask(jsonResp *jsonResponse) []*SignTask {
+	signTasks := make([]*SignTask, 0)
+	for _, task := range jsonResp.ActiveList {
+		// It's a sign task that has not expired
+		if task.ActiveType == 2 && task.Status == 1 {
+			signTask := &SignTask{
+				Id:       task.Id,
+				Referer:  task.Url,
+				SignType: task.NameOne,
+			}
+			signTasks = append(signTasks, signTask)
+		}
+	}
+	return signTasks
+}
+
+type SignTask struct {
+	Id       int
+	Referer  string
+	SignType string
+}
+
+type jsonResponse struct {
+	ActiveList []struct {
+		Id         int    `json:"id"`
+		Status     int    `json:"status"`
+		ActiveType int    `json:"activeType"`
+		NameOne    string `json:"nameOne"`
+		Url        string `json:"url"`
+	} `json:"activeList"`
 }
 
 type Course struct {
