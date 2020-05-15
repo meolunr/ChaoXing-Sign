@@ -1,6 +1,7 @@
 package task
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -76,6 +77,21 @@ func (task *SignTask) getSignType(client *http.Client) (signType int) {
 		signType = SignTypeQrCode
 	}
 	return
+}
+
+/**
+获取上传图片所需要的 Token
+*/
+func getToken(client *http.Client) string {
+	request := netutil.NewClientRequest(http.MethodGet, "https://pan-yz.chaoxing.com/api/token/uservalid")
+	response, _ := client.Do(request)
+
+	defer netutil.BodyClose(response.Body)
+	contentBytes, _ := ioutil.ReadAll(response.Body)
+	jsonResp := make(map[string]string)
+	_ = json.Unmarshal(contentBytes, &jsonResp)
+
+	return jsonResp["_token"]
 }
 
 type JsonResponse struct {
