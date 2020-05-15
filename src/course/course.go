@@ -3,10 +3,10 @@ package course
 import (
 	"encoding/json"
 	"fmt"
+	"global"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"netutil"
 	"strconv"
 	"task"
 )
@@ -20,18 +20,18 @@ type Course struct {
 /**
 获取所有未签到的任务
 */
-func (course *Course) ObtainSignTasks(uid string, client *http.Client) []*task.SignTask {
+func (course *Course) ObtainSignTasks() []*task.SignTask {
 	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
 	params := url.Values{}
 	params.Set("classId", course.ClassId)
 	params.Set("courseId", course.Id)
-	params.Set("uid", uid)
+	params.Set("uid", global.Uid)
 
 	cxUrl.RawQuery = params.Encode()
-	request := netutil.NewClientRequest(http.MethodGet, cxUrl.String())
-	response, _ := client.Do(request)
+	request := global.NewClientRequest(http.MethodGet, cxUrl.String())
+	response, _ := global.Client.Do(request)
 
-	defer netutil.BodyClose(response.Body)
+	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 
 	var jsonResp task.JsonResponse
@@ -55,7 +55,7 @@ func (course *Course) filterSignTask(jsonResp *task.JsonResponse) []*task.SignTa
 			}
 			signTasks = append(signTasks, signTask)
 
-			fmt.Printf("SignTask: %s, Course: %s\n", item.NameOne, course.Name)
+			fmt.Printf("SignTask: %s, Course: %s\n", signTask.Name, course.Name)
 		}
 	}
 	return signTasks
