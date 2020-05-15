@@ -1,12 +1,16 @@
 package task
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"netutil"
+	"os"
 	"strings"
 )
 
@@ -77,6 +81,33 @@ func (task *SignTask) getSignType(client *http.Client) (signType int) {
 		signType = SignTypeQrCode
 	}
 	return
+}
+
+func UploadPhoto(uid string, client *http.Client) string {
+	cxUrl, _ := url.Parse("https://pan-yz.chaoxing.com/upload")
+	params := url.Values{}
+	params.Set("_token", getToken(client))
+	cxUrl.RawQuery = params.Encode()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	form, _ := writer.CreateFormFile("file", "photo.jpg")
+
+	file, _ := os.Open("photo.jpg")
+	defer file.Close()
+	_, _ = io.Copy(form, file)
+	writer.WriteField("puid", uid)
+	writer.Close()
+
+	request := netutil.NewFormRequest(cxUrl.String(), body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+
+	response, _ := client.Do(request)
+	defer netutil.BodyClose(response.Body)
+	contentBytes, _ := ioutil.ReadAll(response.Body)
+	fmt.Println(string(contentBytes))
+
+	return ""
 }
 
 /**
