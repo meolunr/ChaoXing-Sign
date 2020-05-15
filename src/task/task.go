@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"global"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"netutil"
 	"os"
 	"strings"
 )
@@ -21,12 +21,12 @@ type SignTask struct {
 	SignType int
 }
 
-func (task *SignTask) Sign(uid string, client *http.Client) {
+func (task *SignTask) Sign() {
 	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/pptSign/stuSignajax")
 	params := url.Values{}
 	// 签到通用参数
 	params.Set("activeId", task.Id)
-	params.Set("uid", uid)
+	params.Set("uid", global.Uid)
 	params.Set("latitude", "-1")
 	params.Set("longitude", "-1")
 	params.Set("appType", "15")
@@ -36,7 +36,7 @@ func (task *SignTask) Sign(uid string, client *http.Client) {
 	params.Set("useragent", "")
 
 	// 针对特殊方式签到追加参数
-	signType := task.getSignType(client)
+	signType := task.getSignType()
 	switch signType {
 	case SignTypePhoto:
 		params.Set("objectId", "")
@@ -46,11 +46,11 @@ func (task *SignTask) Sign(uid string, client *http.Client) {
 	}
 
 	cxUrl.RawQuery = params.Encode()
-	request := netutil.NewWebViewRequest(http.MethodGet, cxUrl.String())
+	request := global.NewWebViewRequest(http.MethodGet, cxUrl.String())
 	request.Header.Set("Referer", task.Referer)
-	response, _ := client.Do(request)
+	response, _ := global.Client.Do(request)
 
-	defer netutil.BodyClose(response.Body)
+	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 	fmt.Println(string(contentBytes))
 }
@@ -58,12 +58,12 @@ func (task *SignTask) Sign(uid string, client *http.Client) {
 /**
 获取签到类型
 */
-func (task *SignTask) getSignType(client *http.Client) (signType int) {
+func (task *SignTask) getSignType() (signType int) {
 	// 模拟用户点击客户端签到任务打开网页
-	request := netutil.NewWebViewRequest(http.MethodGet, task.Referer)
-	response, _ := client.Do(request)
+	request := global.NewWebViewRequest(http.MethodGet, task.Referer)
+	response, _ := global.Client.Do(request)
 
-	defer netutil.BodyClose(response.Body)
+	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 
 	// 通过签到网页中的字符串区分签到类型
@@ -83,10 +83,10 @@ func (task *SignTask) getSignType(client *http.Client) (signType int) {
 	return
 }
 
-func UploadPhoto(uid string, client *http.Client) string {
+func UploadPhoto() string {
 	cxUrl, _ := url.Parse("https://pan-yz.chaoxing.com/upload")
 	params := url.Values{}
-	params.Set("_token", getToken(client))
+	params.Set("_token", getToken())
 	cxUrl.RawQuery = params.Encode()
 
 	body := &bytes.Buffer{}
@@ -96,14 +96,14 @@ func UploadPhoto(uid string, client *http.Client) string {
 	file, _ := os.Open("photo.jpg")
 	defer file.Close()
 	_, _ = io.Copy(form, file)
-	writer.WriteField("puid", uid)
+	writer.WriteField("puid", global.Uid)
 	writer.Close()
 
-	request := netutil.NewFormRequest(cxUrl.String(), body)
+	request := global.NewFormRequest(cxUrl.String(), body)
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 
-	response, _ := client.Do(request)
-	defer netutil.BodyClose(response.Body)
+	response, _ := global.Client.Do(request)
+	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 	fmt.Println(string(contentBytes))
 
@@ -113,11 +113,11 @@ func UploadPhoto(uid string, client *http.Client) string {
 /**
 获取上传图片所需要的 Token
 */
-func getToken(client *http.Client) string {
-	request := netutil.NewClientRequest(http.MethodGet, "https://pan-yz.chaoxing.com/api/token/uservalid")
-	response, _ := client.Do(request)
+func getToken() string {
+	request := global.NewClientRequest(http.MethodGet, "https://pan-yz.chaoxing.com/api/token/uservalid")
+	response, _ := global.Client.Do(request)
 
-	defer netutil.BodyClose(response.Body)
+	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 	jsonResp := make(map[string]string)
 	_ = json.Unmarshal(contentBytes, &jsonResp)
