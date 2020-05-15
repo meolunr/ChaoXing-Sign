@@ -88,6 +88,13 @@ func (task *SignTask) getSignType() (signType int) {
 返回用于拍照签到的 ObjectId
 */
 func UploadPhoto() (objectId string) {
+	_, err := os.Stat("photo.jpg")
+	if os.IsNotExist(err) {
+		// 没有自定义签到照片时，返回默认 ObjectId
+		// 是一张 654x872 尺寸的纯黑色背景
+		return "92bef3565bcd2a950b10e5cd98190e39"
+	}
+
 	cxUrl, _ := url.Parse("https://pan-yz.chaoxing.com/upload")
 	params := url.Values{}
 	params.Set("_token", getToken())
