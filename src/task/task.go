@@ -83,7 +83,11 @@ func (task *SignTask) getSignType() (signType int) {
 	return
 }
 
-func UploadPhoto() string {
+/**
+上传照片
+返回用于拍照签到的 ObjectId
+*/
+func UploadPhoto() (objectId string) {
 	cxUrl, _ := url.Parse("https://pan-yz.chaoxing.com/upload")
 	params := url.Values{}
 	params.Set("_token", getToken())
@@ -91,23 +95,37 @@ func UploadPhoto() string {
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	form, _ := writer.CreateFormFile("file", "photo.jpg")
 
-	file, _ := os.Open("photo.jpg")
-	defer file.Close()
-	_, _ = io.Copy(form, file)
-	writer.WriteField("puid", global.Uid)
-	writer.Close()
+	form, formErr := writer.CreateFormFile("file", "photo.jpg")
+	file, openErr := os.Open("photo.jpg")
+	defer func() { _ = file.Close() }()
+	if formErr != nil || openErr != nil {
+		fmt.Println("photo.jpg 打开失败")
+		return
+	}
+	_, writeErr := io.Copy(form, file)
+	if writeErr != nil {
+		fmt.Println("photo.jpg 读取失败")
+		return
+	}
+
+	_ = writer.WriteField("puid", global.Uid)
+	_ = writer.Close()
 
 	request := global.NewFormRequest(cxUrl.String(), body)
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 
 	response, _ := global.Client.Do(request)
+	if response == nil {
+		return
+	}
 	defer global.BodyClose(response.Body)
-	contentBytes, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(string(contentBytes))
 
-	return ""
+	contentBytes, _ := ioutil.ReadAll(response.Body)
+	jsonResp := make(map[string]string)
+	_ = json.Unmarshal(contentBytes, &jsonResp)
+
+	return jsonResp["objectId"]
 }
 
 /**
@@ -116,6 +134,9 @@ func UploadPhoto() string {
 func getToken() string {
 	request := global.NewClientRequest(http.MethodGet, "https://pan-yz.chaoxing.com/api/token/uservalid")
 	response, _ := global.Client.Do(request)
+	if response == nil {
+		return ""
+	}
 
 	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
