@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"netutil"
 	"strings"
 )
@@ -16,10 +17,9 @@ type SignTask struct {
 }
 
 func (task *SignTask) Sign(uid string, client *http.Client) {
-	signType := task.getSignType(client)
-	fmt.Println("-----------------> ", task.Name, ", signType = ", signType)
-	/*cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/pptSign/stuSignajax")
+	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/pptSign/stuSignajax")
 	params := url.Values{}
+	// 签到通用参数
 	params.Set("activeId", task.Id)
 	params.Set("uid", uid)
 	params.Set("latitude", "-1")
@@ -28,6 +28,17 @@ func (task *SignTask) Sign(uid string, client *http.Client) {
 	params.Set("clientip", "")
 	params.Set("fid", "")
 	params.Set("name", "")
+	params.Set("useragent", "")
+
+	// 针对特殊方式签到追加参数
+	signType := task.getSignType(client)
+	switch signType {
+	case SignTypePhoto:
+		params.Set("objectId", "")
+	case SignTypeLocation:
+		params.Set("address", "中国")
+		params.Set("ifTiJiao", "1")
+	}
 
 	cxUrl.RawQuery = params.Encode()
 	request := netutil.NewWebViewRequest(http.MethodGet, cxUrl.String())
@@ -36,18 +47,25 @@ func (task *SignTask) Sign(uid string, client *http.Client) {
 
 	defer netutil.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(string(contentBytes))*/
+	fmt.Println(string(contentBytes))
 }
 
+/**
+获取签到类型
+*/
 func (task *SignTask) getSignType(client *http.Client) (signType int) {
+	// 模拟用户点击客户端签到任务打开网页
 	request := netutil.NewWebViewRequest(http.MethodGet, task.Referer)
 	response, _ := client.Do(request)
 
 	defer netutil.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 
+	// 通过签到网页中的字符串区分签到类型
 	html := string(contentBytes)
 	switch {
+	default:
+		signType = SignTypeGeneral
 	case strings.Contains(html, "手势"):
 		signType = SignTypeGesture
 	case strings.Contains(html, "拍照"):
@@ -56,8 +74,6 @@ func (task *SignTask) getSignType(client *http.Client) (signType int) {
 		signType = SignTypeLocation
 	case strings.Contains(html, "二维码"):
 		signType = SignTypeQrCode
-	default:
-		signType = SignTypeGeneral
 	}
 	return
 }
