@@ -50,6 +50,7 @@ func (course *Course) filterSignTask(jsonResp *task.JsonResponse) []*task.SignTa
 		if item.ActiveType == 2 && item.Status == 1 {
 			signTask := &task.SignTask{
 				Id:      strconv.Itoa(item.Id),
+				Name:    item.NameOne,
 				Referer: item.Url,
 			}
 			signTasks = append(signTasks, signTask)
