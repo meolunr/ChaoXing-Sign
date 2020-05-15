@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"task"
 	"time"
 )
 
@@ -22,16 +21,15 @@ func main() {
 	global.Client = newHttpClient()
 
 	login()
-	task.UploadPhoto(uid, client)
-	/*obtainCourses()
+	obtainCourses()
 
-	item := courses[0]
-	tasks := item.ObtainSignTasks(uid, client)
-	tasks[0].Sign(uid, client)*/
-
+	//tasks := courses[0].ObtainSignTasks()
+	_ = courses[0].ObtainSignTasks()
 	/*for _, task := range tasks {
 		task.Sign(uid, client)
 	}*/
+	//result := tasks[0].Sign()
+	//fmt.Println(tasks[0].Name, " 签到: ", result)
 }
 
 func loadProfile() *global.ProfileStruct {
@@ -103,6 +101,7 @@ func obtainCourses() {
 	if jsonResp.Result == 1 {
 		// 获取课程成功
 		courses = make([]*course.Course, 0, len(jsonResp.ChannelList))
+		fmt.Printf("共获取到 %d 个课程\n", len(jsonResp.ChannelList))
 
 		for _, channel := range jsonResp.ChannelList {
 			item := &course.Course{
@@ -111,12 +110,9 @@ func obtainCourses() {
 				Name:    channel.Content.Course.Data[0].Name,
 			}
 			courses = append(courses, item)
-
-			fmt.Println("---------------------------------")
-			fmt.Println("ClassId:    ", item.ClassId)
-			fmt.Println("CourseId:   ", item.Id)
-			fmt.Println("CourseName: ", item.Name)
+			fmt.Println(item.Name)
 		}
+		fmt.Println("---------------------------------")
 	}
 	return
 }

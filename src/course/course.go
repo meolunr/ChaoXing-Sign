@@ -36,8 +36,16 @@ func (course *Course) ObtainSignTasks() []*task.SignTask {
 
 	var jsonResp task.JsonResponse
 	_ = json.Unmarshal(contentBytes, &jsonResp)
+	signTasks := course.filterSignTask(&jsonResp)
+	if len(signTasks) > 0 {
+		fmt.Println("---------------------------------")
+		fmt.Println(course.Name)
+		for _, item := range signTasks {
+			fmt.Printf("    * %s\n", item.Name)
+		}
+	}
 
-	return course.filterSignTask(&jsonResp)
+	return signTasks
 }
 
 /**
@@ -54,8 +62,6 @@ func (course *Course) filterSignTask(jsonResp *task.JsonResponse) []*task.SignTa
 				Referer: item.Url,
 			}
 			signTasks = append(signTasks, signTask)
-
-			fmt.Printf("SignTask: %s, Course: %s\n", signTask.Name, course.Name)
 		}
 	}
 	return signTasks

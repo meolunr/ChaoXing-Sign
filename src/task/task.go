@@ -21,7 +21,10 @@ type SignTask struct {
 	SignType int
 }
 
-func (task *SignTask) Sign() {
+/**
+@return 签到是否成功
+*/
+func (task *SignTask) Sign() bool {
 	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/pptSign/stuSignajax")
 	params := url.Values{}
 	// 签到通用参数
@@ -39,7 +42,7 @@ func (task *SignTask) Sign() {
 	signType := task.getSignType()
 	switch signType {
 	case SignTypePhoto:
-		params.Set("objectId", "")
+		params.Set("objectId", uploadPhoto())
 	case SignTypeLocation:
 		params.Set("address", "中国")
 		params.Set("ifTiJiao", "1")
@@ -49,19 +52,26 @@ func (task *SignTask) Sign() {
 	request := global.NewWebViewRequest(http.MethodGet, cxUrl.String())
 	request.Header.Set("Referer", task.Referer)
 	response, _ := global.Client.Do(request)
+	if response == nil || response.StatusCode != http.StatusOK {
+		return false
+	}
 
 	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(string(contentBytes))
+
+	return strings.Contains(string(contentBytes), "success")
 }
 
 /**
-获取签到类型
+@return 签到类型
 */
 func (task *SignTask) getSignType() (signType int) {
 	// 模拟用户点击客户端签到任务打开网页
 	request := global.NewWebViewRequest(http.MethodGet, task.Referer)
 	response, _ := global.Client.Do(request)
+	if response == nil || response.StatusCode != http.StatusOK {
+		return
+	}
 
 	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
@@ -85,9 +95,9 @@ func (task *SignTask) getSignType() (signType int) {
 
 /**
 上传照片
-返回用于拍照签到的 ObjectId
+@return 用于拍照签到的 ObjectId
 */
-func UploadPhoto() (objectId string) {
+func uploadPhoto() (objectId string) {
 	_, err := os.Stat("photo.jpg")
 	if os.IsNotExist(err) {
 		// 没有自定义签到照片时，返回默认 ObjectId
@@ -123,7 +133,7 @@ func UploadPhoto() (objectId string) {
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 
 	response, _ := global.Client.Do(request)
-	if response == nil {
+	if response == nil || response.StatusCode != http.StatusOK {
 		return
 	}
 	defer global.BodyClose(response.Body)
@@ -136,12 +146,12 @@ func UploadPhoto() (objectId string) {
 }
 
 /**
-获取上传图片所需要的 Token
+@return 上传图片需要的 Token
 */
 func getToken() string {
 	request := global.NewClientRequest(http.MethodGet, "https://pan-yz.chaoxing.com/api/token/uservalid")
 	response, _ := global.Client.Do(request)
-	if response == nil {
+	if response == nil || response.StatusCode != http.StatusOK {
 		return ""
 	}
 
