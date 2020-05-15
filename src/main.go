@@ -4,37 +4,39 @@ import (
 	"course"
 	"encoding/json"
 	"fmt"
+	"global"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"netutil"
 	"os"
 	"strconv"
+	"task"
 	"time"
 )
 
-var profile *Profile
-var client *http.Client
-
-var uid string
 var courses []*course.Course
 
 func main() {
-	loadProfile()
-	newHttpClient()
+	global.Profile = loadProfile()
+	global.Client = newHttpClient()
 
 	login()
-	obtainCourses()
+	task.UploadPhoto(uid, client)
+	/*obtainCourses()
 
 	item := courses[0]
 	tasks := item.ObtainSignTasks(uid, client)
-	tasks[0].Sign(uid, client)
+	tasks[0].Sign(uid, client)*/
+
+	/*for _, task := range tasks {
+		task.Sign(uid, client)
+	}*/
 }
 
-func loadProfile() {
+func loadProfile() *global.ProfileStruct {
 	bytes, _ := ioutil.ReadFile("profile.json")
-	profile = &Profile{}
+	profile := &global.ProfileStruct{}
 	err := json.Unmarshal(bytes, profile)
 
 	if err != nil {
@@ -42,11 +44,12 @@ func loadProfile() {
 		fmt.Println("请检查 profile.json")
 		os.Exit(0)
 	}
+	return profile
 }
 
-func newHttpClient() {
+func newHttpClient() *http.Client {
 	jar, _ := cookiejar.New(nil)
-	client = &http.Client{
+	return &http.Client{
 		Jar: jar,
 	}
 }
@@ -54,12 +57,12 @@ func newHttpClient() {
 func login() {
 	cxUrl, _ := url.Parse("https://passport2-api.chaoxing.com/v11/loginregister")
 	params := url.Values{}
-	params.Set("uname", profile.Username)
-	params.Set("code", profile.Password)
+	params.Set("uname", global.Profile.Username)
+	params.Set("code", global.Profile.Password)
 
 	cxUrl.RawQuery = params.Encode()
-	request := netutil.NewClientRequest(http.MethodPost, cxUrl.String())
-	response, err := client.Do(request)
+	request := global.NewClientRequest(http.MethodPost, cxUrl.String())
+	response, err := global.Client.Do(request)
 
 	if err != nil || response.StatusCode != http.StatusOK {
 		fmt.Println("超星 API 请求失败")
@@ -70,13 +73,13 @@ func login() {
 		return
 	}
 
-	defer netutil.BodyClose(response.Body)
+	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 	jsonResp := &jsonResponse{}
 	_ = json.Unmarshal(contentBytes, jsonResp)
 
 	if jsonResp.Status == true {
-		uid = getUid(response)
+		global.Uid = getUid(response)
 		fmt.Println("登录成功")
 	} else {
 		fmt.Println("登录失败, message: ", jsonResp.Message)
@@ -84,9 +87,9 @@ func login() {
 }
 
 func obtainCourses() {
-	request := netutil.NewClientRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
-	response, _ := client.Do(request)
-	defer netutil.BodyClose(response.Body)
+	request := global.NewClientRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
+	response, _ := global.Client.Do(request)
+	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
 
 	jsonResp := &course.JsonResponse{}
@@ -125,11 +128,6 @@ func getUid(response *http.Response) string {
 		}
 	}
 	return ""
-}
-
-type Profile struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
 }
 
 type jsonResponse struct {
