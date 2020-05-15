@@ -17,6 +17,9 @@ type Course struct {
 	ClassId string
 }
 
+/**
+获取所有未签到的任务
+*/
 func (course *Course) ObtainSignTasks(uid string, client *http.Client) []*task.SignTask {
 	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
 	params := url.Values{}
@@ -25,7 +28,7 @@ func (course *Course) ObtainSignTasks(uid string, client *http.Client) []*task.S
 	params.Set("uid", uid)
 
 	cxUrl.RawQuery = params.Encode()
-	request := netutil.NewRequest(http.MethodGet, cxUrl.String())
+	request := netutil.NewClientRequest(http.MethodGet, cxUrl.String())
 	response, _ := client.Do(request)
 
 	defer netutil.BodyClose(response.Body)
@@ -34,26 +37,24 @@ func (course *Course) ObtainSignTasks(uid string, client *http.Client) []*task.S
 	var jsonResp task.JsonResponse
 	_ = json.Unmarshal(contentBytes, &jsonResp)
 
-	return filterSignTask(course, &jsonResp)
+	return course.filterSignTask(&jsonResp)
 }
 
 /**
 过滤非签到任务
 */
-func filterSignTask(course *Course, jsonResp *task.JsonResponse) []*task.SignTask {
+func (course *Course) filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 	signTasks := make([]*task.SignTask, 0)
 	for _, item := range jsonResp.ActiveList {
 		// 检查是否为未过期的签到任务
-		//if item.ActiveType == 2 && item.Status == 1 {
-		if item.ActiveType == 2 && item.Status == 2 { // 测试用
+		if item.ActiveType == 2 && item.Status == 1 {
 			signTask := &task.SignTask{
-				Id:       strconv.Itoa(item.Id),
-				Referer:  item.Url,
-				SignType: item.NameOne,
+				Id:      strconv.Itoa(item.Id),
+				Referer: item.Url,
 			}
 			signTasks = append(signTasks, signTask)
 
-			fmt.Printf("SignTask: %s, Course : %s\n", item.NameOne, course.Name)
+			fmt.Printf("SignTask: %s, Course: %s\n", item.NameOne, course.Name)
 		}
 	}
 	return signTasks

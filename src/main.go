@@ -27,7 +27,7 @@ func main() {
 	login()
 	obtainCourses()
 
-	item := courses[2]
+	item := courses[0]
 	tasks := item.ObtainSignTasks(uid, client)
 	tasks[0].Sign(uid, client)
 }
@@ -58,7 +58,7 @@ func login() {
 	params.Set("code", profile.Password)
 
 	cxUrl.RawQuery = params.Encode()
-	request := netutil.NewRequest(http.MethodPost, cxUrl.String())
+	request := netutil.NewClientRequest(http.MethodPost, cxUrl.String())
 	response, err := client.Do(request)
 
 	if err != nil || response.StatusCode != http.StatusOK {
@@ -84,7 +84,7 @@ func login() {
 }
 
 func obtainCourses() {
-	request := netutil.NewRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
+	request := netutil.NewClientRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
 	response, _ := client.Do(request)
 	defer netutil.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
