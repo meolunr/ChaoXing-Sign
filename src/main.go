@@ -16,20 +16,34 @@ import (
 
 var courses []*course.Course
 
+var courseChan chan *course.Course
+var resultChan chan bool
+
 func main() {
 	global.Profile = loadProfile()
 	global.Client = newHttpClient()
+	courseChan = make(chan *course.Course)
+	resultChan = make(chan bool)
 
 	login()
 	obtainCourses()
 
-	//tasks := courses[0].ObtainSignTasks()
-	_ = courses[0].ObtainSignTasks()
+	for _, item := range courses {
+		go startSign()
+		courseChan <- item
+	}
+
+	<-resultChan
+
+	fmt.Println("main func stop...")
+}
+
+func startSign() {
+	item := <-courseChan
+	_ = item.ObtainSignTasks()
 	/*for _, task := range tasks {
-		task.Sign(uid, client)
+		//isSuccess :=task.Sign()
 	}*/
-	//result := tasks[0].Sign()
-	//fmt.Println(tasks[0].Name, " 签到: ", result)
 }
 
 func loadProfile() *global.ProfileStruct {
@@ -110,7 +124,7 @@ func obtainCourses() {
 				Name:    channel.Content.Course.Data[0].Name,
 			}
 			courses = append(courses, item)
-			fmt.Println(item.Name)
+			fmt.Println("  * ", item.Name)
 		}
 		fmt.Println("---------------------------------")
 	}

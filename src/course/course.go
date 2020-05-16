@@ -41,7 +41,7 @@ func (course *Course) ObtainSignTasks() []*task.SignTask {
 		fmt.Println("---------------------------------")
 		fmt.Println(course.Name)
 		for _, item := range signTasks {
-			fmt.Printf("    * %s\n", item.Name)
+			fmt.Printf("  * %s\n", item.Name)
 		}
 	}
 
