@@ -10,12 +10,14 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"task"
 	"time"
 )
 
 var courses []*course.Course
+var signedIds []string
 
 var courseChan chan *course.Course
 var signedChan chan string
@@ -34,7 +36,7 @@ func main() {
 		courseChan <- item
 	}
 
-	signedIds := make([]string, 0)
+	signedIds = make([]string, 0)
 	for id := range signedChan {
 		fmt.Println(id)
 		signedIds = append(signedIds, id)
@@ -72,14 +74,20 @@ func startSign() {
 func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 	signTasks := make([]*task.SignTask, 0)
 	for _, item := range jsonResp.ActiveList {
-		// 检查是否为未过期的签到任务
-		if item.ActiveType == 2 && item.Status == 1 {
-			signTask := &task.SignTask{
-				Id:      strconv.Itoa(item.Id),
-				Name:    item.NameOne,
-				Referer: item.Url,
+		// 是否为签到任务
+		if item.ActiveType == 2 {
+			// 是否未过期
+			if item.Status == 1 {
+				taskId := strconv.Itoa(item.Id)
+				// 是否已签到
+				if !containInSlice(signedIds, taskId) {
+					signTasks = append(signTasks, &task.SignTask{
+						Id:      taskId,
+						Name:    item.NameOne,
+						Referer: item.Url,
+					})
+				}
 			}
-			signTasks = append(signTasks, signTask)
 		}
 	}
 	return signTasks
@@ -177,6 +185,16 @@ func getUid(response *http.Response) string {
 		}
 	}
 	return ""
+}
+
+/**
+@return slice 内是否包含某个元素
+*/
+func containInSlice(haystack []string, needle string) bool {
+	sort.Strings(haystack)
+
+	index := sort.SearchStrings(haystack, needle)
+	return index < len(haystack) && haystack[index] == needle
 }
 
 type jsonResponse struct {
