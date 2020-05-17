@@ -29,8 +29,8 @@ func main() {
 
 	// 单个课程休眠时间 = 总休眠时间 / 课程数
 	// 避免并发请求所有课程的任务列表
-	delay := time.Second * time.Duration(16/len(courses))
-	ticker := time.NewTicker(time.Second * 10)
+	delay := time.Second * time.Duration(global.Profile.Interval/len(courses))
+	ticker := time.NewTicker(time.Second * time.Duration(global.Profile.Interval))
 	defer ticker.Stop()
 
 	go func() {
@@ -57,6 +57,12 @@ func loadProfile() *global.ProfileStruct {
 		fmt.Println("请检查 profile.json")
 		os.Exit(0)
 	}
+
+	if profile.Interval == 0 {
+		// 默认刷新间隔时间为 30 秒
+		profile.Interval = 30
+	}
+
 	return profile
 }
 
@@ -180,6 +186,7 @@ func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 			}
 		}
 	}
+	fmt.Println(signedIds)
 	return signTasks
 }
 
