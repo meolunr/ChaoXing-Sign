@@ -131,8 +131,13 @@ func obtainCourses() (courses []*course.Course) {
 				Id:      strconv.Itoa(channel.Content.Course.Data[0].Id),
 				Name:    channel.Content.Course.Data[0].Name,
 			}
+			// 排除不需要签到的课程
+			if containInSlice(global.Profile.ExcludeCourse, item.Id) {
+				continue
+			}
+
 			courses = append(courses, item)
-			fmt.Println("  * ", item.Name)
+			fmt.Printf("[ %s ] %s\n", item.Id, item.Name)
 		}
 		fmt.Println("---------------------------------")
 	}
