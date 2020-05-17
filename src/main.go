@@ -16,84 +16,35 @@ import (
 	"time"
 )
 
-var courses []*course.Course
-var signedIds []string
-
-var courseChan chan *course.Course
 var signedChan chan string
+var signedIds = make([]string, 0)
 
 func main() {
 	global.Profile = loadProfile()
 	global.Client = newHttpClient()
-	courseChan = make(chan *course.Course)
 	signedChan = make(chan string)
 
 	login()
-	obtainCourses()
+	courses := obtainCourses()
 
-	for _, item := range courses {
-		go startSign()
-		courseChan <- item
-	}
+	// 单个课程休眠时间 = 总休眠时间 / 课程数
+	// 避免并发请求所有课程的任务列表
+	delay := time.Second * time.Duration(16/len(courses))
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
 
-	signedIds = make([]string, 0)
+	go func() {
+		for range ticker.C {
+			for _, item := range courses {
+				startSign(item)
+				time.Sleep(delay)
+			}
+		}
+	}()
+
 	for id := range signedChan {
-		fmt.Println(id)
 		signedIds = append(signedIds, id)
 	}
-
-	fmt.Println("main func stop...")
-}
-
-func startSign() {
-	courseItem := <-courseChan
-	jsonResp := courseItem.ObtainTasks()
-	signTasks := filterSignTask(jsonResp)
-
-	if len(signTasks) > 0 {
-		fmt.Println("---------------------------------")
-		fmt.Println(courseItem.Name)
-		for _, signTask := range signTasks {
-			fmt.Printf("  * %s\n", signTask.Name)
-		}
-
-		for _, signTask := range signTasks {
-			//isSuccess := signTask.Sign()
-			isSuccess := true
-			if isSuccess {
-				signedChan <- signTask.Id
-				fmt.Println("签到成功：", signTask.Name)
-			}
-		}
-	}
-}
-
-/**
-过滤非签到任务
-*/
-func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
-	signTasks := make([]*task.SignTask, 0)
-	for _, item := range jsonResp.ActiveList {
-		// 是否为签到任务
-		if item.ActiveType == 2 {
-			taskId := strconv.Itoa(item.Id)
-			// 是否未过期
-			if item.Status == 1 {
-				// 是否未签到
-				if !containInSlice(signedIds, taskId) {
-					signTasks = append(signTasks, &task.SignTask{
-						Id:      taskId,
-						Name:    item.NameOne,
-						Referer: item.Url,
-					})
-				}
-			} else {
-				// 签到任务已过期，从已签到切片中移除 taskId
-				removeInSlice(signedIds, taskId)
-			}
-		}
-	}
-	return signTasks
 }
 
 func loadProfile() *global.ProfileStruct {
@@ -148,7 +99,7 @@ func login() {
 	}
 }
 
-func obtainCourses() {
+func obtainCourses() (courses []*course.Course) {
 	request := global.NewClientRequest(http.MethodGet, "https://mooc1-api.chaoxing.com/mycourse/backclazzdata")
 	response, _ := global.Client.Do(request)
 	defer global.BodyClose(response.Body)
@@ -179,6 +130,58 @@ func obtainCourses() {
 		fmt.Println("---------------------------------")
 	}
 	return
+}
+
+func startSign(course *course.Course) {
+	jsonResp := course.ObtainTasks()
+	signTasks := filterSignTask(jsonResp)
+
+	if len(signTasks) > 0 {
+		fmt.Println("---------------------------------")
+		fmt.Println(course.Name)
+		for _, signTask := range signTasks {
+			fmt.Printf("  * %s\n", signTask.Name)
+		}
+
+		for _, signTask := range signTasks {
+			isSuccess := signTask.Sign()
+			if isSuccess {
+				signedChan <- signTask.Id
+				fmt.Println("签到成功：", signTask.Name)
+			} else {
+				fmt.Println("签到失败：", signTask.Name)
+			}
+		}
+	}
+}
+
+/**
+过滤非签到任务
+*/
+func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
+	signTasks := make([]*task.SignTask, 0)
+	for _, item := range jsonResp.ActiveList {
+		// 是否为签到任务
+		if item.ActiveType == 2 {
+			taskId := strconv.Itoa(item.Id)
+			// 是否未过期
+			if item.Status == 1 {
+				// 是否未签到
+				if !containInSlice(signedIds, taskId) {
+					signTasks = append(signTasks, &task.SignTask{
+						Id:      taskId,
+						Name:    item.NameOne,
+						Referer: item.Url,
+					})
+				}
+			} else {
+				// 签到任务已过期，从已签到切片中移除 taskId
+				removeInSlice(signedIds, taskId)
+			}
+		}
+	}
+	fmt.Println(signedIds)
+	return signTasks
 }
 
 func getUid(response *http.Response) string {
