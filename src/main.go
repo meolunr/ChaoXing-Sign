@@ -11,19 +11,20 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"task"
 	"time"
 )
 
 var courses []*course.Course
 
 var courseChan chan *course.Course
-var resultChan chan bool
+var signedChan chan string
 
 func main() {
 	global.Profile = loadProfile()
 	global.Client = newHttpClient()
 	courseChan = make(chan *course.Course)
-	resultChan = make(chan bool)
+	signedChan = make(chan string)
 
 	login()
 	obtainCourses()
@@ -33,17 +34,55 @@ func main() {
 		courseChan <- item
 	}
 
-	<-resultChan
+	signedIds := make([]string, 0)
+	for id := range signedChan {
+		fmt.Println(id)
+		signedIds = append(signedIds, id)
+	}
 
 	fmt.Println("main func stop...")
 }
 
 func startSign() {
-	item := <-courseChan
-	_ = item.ObtainSignTasks()
-	/*for _, task := range tasks {
-		//isSuccess :=task.Sign()
-	}*/
+	courseItem := <-courseChan
+	jsonResp := courseItem.ObtainTasks()
+	signTasks := filterSignTask(jsonResp)
+
+	if len(signTasks) > 0 {
+		fmt.Println("---------------------------------")
+		fmt.Println(courseItem.Name)
+		for _, signTask := range signTasks {
+			fmt.Printf("  * %s\n", signTask.Name)
+		}
+
+		for _, signTask := range signTasks {
+			//isSuccess := signTask.Sign()
+			isSuccess := true
+			if isSuccess {
+				signedChan <- signTask.Id
+				fmt.Println("签到成功：", signTask.Name)
+			}
+		}
+	}
+}
+
+/**
+过滤非签到任务
+*/
+func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
+	signTasks := make([]*task.SignTask, 0)
+	for _, item := range jsonResp.ActiveList {
+		// 检查是否为未过期的签到任务
+		if item.ActiveType == 2 && item.Status == 1 {
+			signTask := &task.SignTask{
+				Id:      strconv.Itoa(item.Id),
+				Name:    item.NameOne,
+				Referer: item.Url,
+			}
+			signTasks = append(signTasks, signTask)
+		}
+	}
+	return signTasks
 }
 
 func loadProfile() *global.ProfileStruct {

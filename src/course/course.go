@@ -2,12 +2,10 @@ package course
 
 import (
 	"encoding/json"
-	"fmt"
 	"global"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"task"
 )
 
@@ -20,7 +18,7 @@ type Course struct {
 /**
 获取所有未签到的任务
 */
-func (course *Course) ObtainSignTasks() []*task.SignTask {
+func (course *Course) ObtainTasks() *task.JsonResponse {
 	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
 	params := url.Values{}
 	params.Set("classId", course.ClassId)
@@ -33,38 +31,10 @@ func (course *Course) ObtainSignTasks() []*task.SignTask {
 
 	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
-
 	var jsonResp task.JsonResponse
 	_ = json.Unmarshal(contentBytes, &jsonResp)
-	signTasks := course.filterSignTask(&jsonResp)
-	if len(signTasks) > 0 {
-		fmt.Println("---------------------------------")
-		fmt.Println(course.Name)
-		for _, item := range signTasks {
-			fmt.Printf("  * %s\n", item.Name)
-		}
-	}
 
-	return signTasks
-}
-
-/**
-过滤非签到任务
-*/
-func (course *Course) filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
-	signTasks := make([]*task.SignTask, 0)
-	for _, item := range jsonResp.ActiveList {
-		// 检查是否为未过期的签到任务
-		if item.ActiveType == 2 && item.Status == 1 {
-			signTask := &task.SignTask{
-				Id:      strconv.Itoa(item.Id),
-				Name:    item.NameOne,
-				Referer: item.Url,
-			}
-			signTasks = append(signTasks, signTask)
-		}
-	}
-	return signTasks
+	return &jsonResp
 }
 
 type JsonResponse struct {
