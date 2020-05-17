@@ -58,8 +58,10 @@ func (task *SignTask) Sign() bool {
 
 	defer global.BodyClose(response.Body)
 	contentBytes, _ := ioutil.ReadAll(response.Body)
+	contentStr := string(contentBytes)
 
-	return strings.Contains(string(contentBytes), "success")
+	return strings.Contains(contentStr, "success") ||
+		strings.Contains(contentStr, "已签到")
 }
 
 /**
