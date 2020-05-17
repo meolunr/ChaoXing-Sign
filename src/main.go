@@ -176,11 +176,10 @@ func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 				}
 			} else {
 				// 签到任务已过期，从已签到切片中移除 taskId
-				removeInSlice(signedIds, taskId)
+				signedIds = removeInSlice(signedIds, taskId)
 			}
 		}
 	}
-	fmt.Println(signedIds)
 	return signTasks
 }
 
