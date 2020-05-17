@@ -76,10 +76,10 @@ func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 	for _, item := range jsonResp.ActiveList {
 		// 是否为签到任务
 		if item.ActiveType == 2 {
+			taskId := strconv.Itoa(item.Id)
 			// 是否未过期
 			if item.Status == 1 {
-				taskId := strconv.Itoa(item.Id)
-				// 是否已签到
+				// 是否未签到
 				if !containInSlice(signedIds, taskId) {
 					signTasks = append(signTasks, &task.SignTask{
 						Id:      taskId,
@@ -87,6 +87,9 @@ func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 						Referer: item.Url,
 					})
 				}
+			} else {
+				// 签到任务已过期，从已签到切片中移除 taskId
+				removeInSlice(signedIds, taskId)
 			}
 		}
 	}
@@ -195,6 +198,19 @@ func containInSlice(haystack []string, needle string) bool {
 
 	index := sort.SearchStrings(haystack, needle)
 	return index < len(haystack) && haystack[index] == needle
+}
+
+/**
+从 slice 中删除某个元素
+*/
+func removeInSlice(haystack []string, needle string) []string {
+	sort.Strings(haystack)
+
+	index := sort.SearchStrings(haystack, needle)
+	if index < len(haystack) && haystack[index] == needle {
+		return append(haystack[:index], haystack[index+1:]...)
+	}
+	return haystack
 }
 
 type jsonResponse struct {
