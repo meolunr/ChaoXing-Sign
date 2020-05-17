@@ -19,6 +19,7 @@ type SignTask struct {
 	Name     string
 	Referer  string
 	SignType int
+	Course   string
 }
 
 /**

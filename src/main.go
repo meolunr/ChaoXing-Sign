@@ -16,13 +16,13 @@ import (
 	"time"
 )
 
-var signedChan chan string
+var signedChan chan *task.SignTask
 var signedIds = make([]string, 0)
 
 func main() {
 	global.Profile = loadProfile()
 	global.Client = newHttpClient()
-	signedChan = make(chan string)
+	signedChan = make(chan *task.SignTask)
 
 	login()
 	courses := obtainCourses()
@@ -42,8 +42,9 @@ func main() {
 		}
 	}()
 
-	for id := range signedChan {
-		signedIds = append(signedIds, id)
+	for signTask := range signedChan {
+		signedIds = append(signedIds, signTask.Id)
+		pushServerChan(signTask)
 	}
 }
 
@@ -152,7 +153,8 @@ func startSign(course *course.Course) {
 		for _, signTask := range signTasks {
 			isSuccess := signTask.Sign()
 			if isSuccess {
-				signedChan <- signTask.Id
+				signTask.Course = course.Name
+				signedChan <- signTask
 				fmt.Println("签到成功：", signTask.Name)
 			} else {
 				fmt.Println("签到失败：", signTask.Name)
@@ -186,8 +188,22 @@ func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 			}
 		}
 	}
-	fmt.Println(signedIds)
 	return signTasks
+}
+
+func pushServerChan(signTask *task.SignTask) {
+	if global.Profile.ServerChan == "" {
+		return
+	}
+
+	serverChanUrl, _ := url.Parse(global.Profile.ServerChan)
+	params := url.Values{}
+	params.Set("text", signTask.Course+" 签到成功")
+	params.Set("desp", signTask.Name)
+
+	serverChanUrl.RawQuery = params.Encode()
+	request := global.NewWebViewRequest(http.MethodGet, serverChanUrl.String())
+	_, _ = global.Client.Do(request)
 }
 
 func getUid(response *http.Response) string {
