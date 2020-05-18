@@ -85,9 +85,8 @@ func login() {
 		cxUrl.RawQuery = params.Encode()
 		request := global.NewClientRequest(http.MethodPost, cxUrl.String())
 		response, err := global.Client.Do(request)
-
-		if err != nil || response.StatusCode != http.StatusOK {
-			return errors.New("login failed, network error")
+		if response == nil || response.StatusCode != http.StatusOK {
+			return errors.New(fmt.Sprintln("login failed.", err))
 		}
 
 		defer global.BodyClose(response.Body)

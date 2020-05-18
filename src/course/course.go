@@ -2,6 +2,8 @@ package course
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"global"
 	"io/ioutil"
 	"net/http"
@@ -18,23 +20,28 @@ type Course struct {
 /**
 获取所有未签到的任务
 */
-func (course *Course) ObtainTasks() *task.JsonResponse {
-	cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
-	params := url.Values{}
-	params.Set("classId", course.ClassId)
-	params.Set("courseId", course.Id)
-	params.Set("uid", global.Uid)
+func (course *Course) ObtainTasks() (jsonResp *task.JsonResponse) {
+	global.Retry(func() error {
+		cxUrl, _ := url.Parse("https://mobilelearn.chaoxing.com/ppt/activeAPI/taskactivelist")
+		params := url.Values{}
+		params.Set("classId", course.ClassId)
+		params.Set("courseId", course.Id)
+		params.Set("uid", global.Uid)
 
-	cxUrl.RawQuery = params.Encode()
-	request := global.NewClientRequest(http.MethodGet, cxUrl.String())
-	response, _ := global.Client.Do(request)
+		cxUrl.RawQuery = params.Encode()
+		request := global.NewClientRequest(http.MethodGet, cxUrl.String())
+		response, err := global.Client.Do(request)
+		if response == nil || response.StatusCode != http.StatusOK {
+			return errors.New(fmt.Sprintln("obtain tasks failed.", err))
+		}
 
-	defer global.BodyClose(response.Body)
-	contentBytes, _ := ioutil.ReadAll(response.Body)
-	var jsonResp task.JsonResponse
-	_ = json.Unmarshal(contentBytes, &jsonResp)
+		defer global.BodyClose(response.Body)
+		contentBytes, _ := ioutil.ReadAll(response.Body)
+		_ = json.Unmarshal(contentBytes, &jsonResp)
 
-	return &jsonResp
+		return nil
+	})
+	return
 }
 
 type JsonResponse struct {
