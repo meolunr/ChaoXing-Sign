@@ -28,6 +28,8 @@ func (course *Course) ObtainTasks() (jsonResp *task.JsonResponse) {
 		params.Set("courseId", course.Id)
 		params.Set("uid", global.Uid)
 
+		jar := global.Client.Jar
+		fmt.Println(&jar)
 		cxUrl.RawQuery = params.Encode()
 		request := global.NewClientRequest(http.MethodGet, cxUrl.String())
 		response, err := global.Client.Do(request)
@@ -37,7 +39,11 @@ func (course *Course) ObtainTasks() (jsonResp *task.JsonResponse) {
 
 		defer global.BodyClose(response.Body)
 		contentBytes, _ := ioutil.ReadAll(response.Body)
-		_ = json.Unmarshal(contentBytes, &jsonResp)
+		jsonErr := json.Unmarshal(contentBytes, &jsonResp)
+		if jsonErr != nil {
+			global.Login()
+			return errors.New(fmt.Sprintln("attempting to login again to get cookies.", jsonErr))
+		}
 
 		return nil
 	})
