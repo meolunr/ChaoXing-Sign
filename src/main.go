@@ -156,15 +156,16 @@ func startSign(course *course.Course) {
 		for _, signTask := range signTasks {
 			fmt.Printf("  * %s\n", signTask.Name)
 		}
+		fmt.Println()
 
 		for _, signTask := range signTasks {
 			isSuccess := signTask.Sign()
 			if isSuccess {
 				signTask.Course = course.Name
 				signedChan <- signTask
-				fmt.Println("签到成功：", signTask.Name)
+				fmt.Printf("签到成功：%s (%s)\n", signTask.Name, time.Now().Format("2006-01-02 15:04"))
 			} else {
-				fmt.Println("签到失败：", signTask.Name)
+				fmt.Printf("签到失败：%s (%s)\n", signTask.Name, time.Now().Format("2006-01-02 15:04"))
 			}
 		}
 	}
