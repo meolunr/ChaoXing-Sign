@@ -41,8 +41,9 @@ type JsonResponse struct {
 	Result      int `json:"result"`
 	ChannelList []struct {
 		Content struct {
-			Id     int `json:"id"`
-			Course struct {
+			Id      int  `json:"id"`
+			IsStart bool `json:"isstart"`
+			Course  struct {
 				Data []struct {
 					Id   int    `json:"id"`
 					Name string `json:"name"`

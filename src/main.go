@@ -126,6 +126,10 @@ func obtainCourses() (courses []*course.Course) {
 		fmt.Printf("共获取到 %d 个课程\n", len(jsonResp.ChannelList))
 
 		for _, channel := range jsonResp.ChannelList {
+			// 排除不是学生的课程和未开课的课程
+			if !channel.Content.IsStart {
+				continue
+			}
 			item := &course.Course{
 				ClassId: strconv.Itoa(channel.Content.Id),
 				Id:      strconv.Itoa(channel.Content.Course.Data[0].Id),
@@ -137,7 +141,7 @@ func obtainCourses() (courses []*course.Course) {
 			}
 
 			courses = append(courses, item)
-			fmt.Printf("[ %s ] %s\n", item.Id, item.Name)
+			fmt.Printf("[ %9s ] %s\n", item.Id, item.Name)
 		}
 		fmt.Println("---------------------------------")
 	}
