@@ -1,8 +1,10 @@
 package global
 
 import (
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 func NewClientRequest(method, url string) *http.Request {
@@ -26,4 +28,31 @@ func NewFormRequest(url string, body io.Reader) *http.Request {
 
 func BodyClose(body io.Closer) {
 	_ = body.Close()
+}
+
+func Retry(fn func() error) {
+	retryFunc(3, 5, fn)
+}
+
+/**
+重新尝试执行函数
+
+@param fn 要执行的函数
+@param attempts 重试次数
+@param sleep 间隔秒数
+*/
+func retryFunc(attempts int, sleep int, fn func() error) {
+	err := fn()
+	if err == nil {
+		// 函数没有异常，不需要重试
+		return
+	}
+
+	fmt.Println("Error: ", err)
+	time.Sleep(time.Second * time.Duration(sleep))
+	if attempts--; attempts > 0 {
+		retryFunc(attempts, sleep*2, fn)
+	} else {
+		retryFunc(attempts, sleep, fn)
+	}
 }

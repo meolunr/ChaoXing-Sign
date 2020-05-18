@@ -3,6 +3,7 @@ package main
 import (
 	"course"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"global"
 	"io/ioutil"
@@ -75,35 +76,33 @@ func newHttpClient() *http.Client {
 }
 
 func login() {
-	cxUrl, _ := url.Parse("https://passport2-api.chaoxing.com/v11/loginregister")
-	params := url.Values{}
-	params.Set("uname", global.Profile.Username)
-	params.Set("code", global.Profile.Password)
+	global.Retry(func() error {
+		cxUrl, _ := url.Parse("https://passport2-api.chaoxing.com/v11/loginregister")
+		params := url.Values{}
+		params.Set("uname", global.Profile.Username)
+		params.Set("code", global.Profile.Password)
 
-	cxUrl.RawQuery = params.Encode()
-	request := global.NewClientRequest(http.MethodPost, cxUrl.String())
-	response, err := global.Client.Do(request)
+		cxUrl.RawQuery = params.Encode()
+		request := global.NewClientRequest(http.MethodPost, cxUrl.String())
+		response, err := global.Client.Do(request)
 
-	if err != nil || response.StatusCode != http.StatusOK {
-		fmt.Println("超星 API 请求失败")
-		fmt.Println("10 秒后自动重试...")
+		if err != nil || response.StatusCode != http.StatusOK {
+			return errors.New("login failed, network error")
+		}
 
-		time.Sleep(time.Second * 10)
-		login()
-		return
-	}
+		defer global.BodyClose(response.Body)
+		contentBytes, _ := ioutil.ReadAll(response.Body)
+		jsonResp := &jsonResponse{}
+		_ = json.Unmarshal(contentBytes, jsonResp)
 
-	defer global.BodyClose(response.Body)
-	contentBytes, _ := ioutil.ReadAll(response.Body)
-	jsonResp := &jsonResponse{}
-	_ = json.Unmarshal(contentBytes, jsonResp)
-
-	if jsonResp.Status == true {
-		global.Uid = getUid(response)
-		fmt.Println("登录成功")
-	} else {
-		fmt.Println("登录失败, message: ", jsonResp.Message)
-	}
+		if jsonResp.Status == true {
+			global.Uid = getUid(response)
+			fmt.Println("登录成功")
+		} else {
+			fmt.Println("登录失败, message: ", jsonResp.Message)
+		}
+		return nil
+	})
 }
 
 func obtainCourses() (courses []*course.Course) {
@@ -123,7 +122,7 @@ func obtainCourses() (courses []*course.Course) {
 	if jsonResp.Result == 1 {
 		// 获取课程成功
 		courses = make([]*course.Course, 0, len(jsonResp.ChannelList))
-		fmt.Printf("共获取到 %d 个课程\n", len(jsonResp.ChannelList))
+		fmt.Printf("共获取到 %d 个课程，以下课程将会自动签到：\n", len(jsonResp.ChannelList))
 
 		for _, channel := range jsonResp.ChannelList {
 			// 排除不是学生的课程和未开课的课程
@@ -180,9 +179,8 @@ func filterSignTask(jsonResp *task.JsonResponse) []*task.SignTask {
 	for _, item := range jsonResp.ActiveList {
 		// 是否为签到任务
 		if item.ActiveType == 2 {
-			taskId := strconv.Itoa(item.Id)
 			// 是否未过期
-			if item.Status == 1 {
+			if taskId := strconv.Itoa(item.Id); item.Status == 1 {
 				// 是否未签到
 				if !containInSlice(signedIds, taskId) {
 					signTasks = append(signTasks, &task.SignTask{
