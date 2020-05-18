@@ -48,7 +48,7 @@ func retryFunc(attempts int, sleep int, fn func() error) {
 		return
 	}
 
-	fmt.Println("Error: ", err)
+	fmt.Print("Error: ", err)
 	time.Sleep(time.Second * time.Duration(sleep))
 	if attempts--; attempts > 0 {
 		retryFunc(attempts, sleep*2, fn)
