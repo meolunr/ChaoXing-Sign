@@ -3,12 +3,10 @@ package main
 import (
 	"course"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"global"
 	"io/ioutil"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"sort"
@@ -21,11 +19,11 @@ var signedChan chan *task.SignTask
 var signedIds = make([]string, 0)
 
 func main() {
-	global.Profile = loadProfile()
-	global.Client = newHttpClient()
-	signedChan = make(chan *task.SignTask)
+	global.LoadProfile()
+	global.NewHttpClient()
+	global.Login()
 
-	login()
+	signedChan = make(chan *task.SignTask)
 	courses := obtainCourses()
 
 	// 单个课程休眠时间 = 总休眠时间 / 课程数
@@ -47,61 +45,6 @@ func main() {
 		signedIds = append(signedIds, signTask.Id)
 		pushServerChan(signTask)
 	}
-}
-
-func loadProfile() *global.ProfileStruct {
-	bytes, _ := ioutil.ReadFile("profile.json")
-	profile := &global.ProfileStruct{}
-	err := json.Unmarshal(bytes, profile)
-
-	if err != nil {
-		fmt.Println("用户配置文件读取失败")
-		fmt.Println("请检查 profile.json")
-		os.Exit(0)
-	}
-
-	if profile.Interval == 0 {
-		// 默认刷新间隔时间为 30 秒
-		profile.Interval = 30
-	}
-
-	return profile
-}
-
-func newHttpClient() *http.Client {
-	jar, _ := cookiejar.New(nil)
-	return &http.Client{
-		Jar: jar,
-	}
-}
-
-func login() {
-	global.Retry(func() error {
-		cxUrl, _ := url.Parse("https://passport2-api.chaoxing.com/v11/loginregister")
-		params := url.Values{}
-		params.Set("uname", global.Profile.Username)
-		params.Set("code", global.Profile.Password)
-
-		cxUrl.RawQuery = params.Encode()
-		request := global.NewClientRequest(http.MethodPost, cxUrl.String())
-		response, err := global.Client.Do(request)
-		if response == nil || response.StatusCode != http.StatusOK {
-			return errors.New(fmt.Sprintln("login failed.", err))
-		}
-
-		defer global.BodyClose(response.Body)
-		contentBytes, _ := ioutil.ReadAll(response.Body)
-		jsonResp := &jsonResponse{}
-		_ = json.Unmarshal(contentBytes, jsonResp)
-
-		if jsonResp.Status == true {
-			global.Uid = getUid(response)
-			fmt.Println("登录成功")
-		} else {
-			fmt.Println("登录失败, message: ", jsonResp.Message)
-		}
-		return nil
-	})
 }
 
 func obtainCourses() (courses []*course.Course) {
@@ -213,15 +156,6 @@ func pushServerChan(signTask *task.SignTask) {
 	_, _ = global.Client.Do(request)
 }
 
-func getUid(response *http.Response) string {
-	for _, cookie := range response.Cookies() {
-		if cookie.Name == "UID" {
-			return cookie.Value
-		}
-	}
-	return ""
-}
-
 /**
 @return slice 内是否包含某个元素
 */
@@ -243,9 +177,4 @@ func removeInSlice(haystack []string, needle string) []string {
 		return append(haystack[:index], haystack[index+1:]...)
 	}
 	return haystack
-}
-
-type jsonResponse struct {
-	Message string `json:"mes"`
-	Status  bool   `json:"status"`
 }
