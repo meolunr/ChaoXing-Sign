@@ -9,7 +9,7 @@
 - 支持 Server 酱推送签到消息到微信
 
 ### 使用方法
-在 [Releases](/releases "Releases") 页面下载适合您系统的二进制可执行文件。
+在 [Releases](https://github.com/iAcn/ChaoXing-Sign/releases "Releases") 页面下载适合您系统的二进制可执行文件。
 
 新建 **profile.json** 文件并和上一步下载的程序文件放置在同一目录。
 
