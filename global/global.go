@@ -27,8 +27,8 @@ func LoadProfile() {
 	}
 
 	if Profile.Interval == 0 {
-		// 默认刷新间隔时间为 30 秒
-		Profile.Interval = 30
+		// 默认刷新间隔时间为 60 秒
+		Profile.Interval = 60
 	}
 }
 
@@ -81,6 +81,8 @@ type ProfileStruct struct {
 	Username      string   `json:"username"`
 	Password      string   `json:"password"`
 	Interval      int      `json:"interval"`
+	StartTime     string   `json:"startTime"`
+	EndTime       string   `json:"endTime"`
 	ServerChan    string   `json:"serverChan"`
 	ExcludeCourse []string `json:"excludeCourse"`
 }
