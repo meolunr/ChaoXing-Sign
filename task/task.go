@@ -2,9 +2,9 @@ package task
 
 import (
 	"bytes"
+	"chaoxing-sign/global"
 	"encoding/json"
 	"fmt"
-	"global"
 	"io"
 	"io/ioutil"
 	"mime/multipart"

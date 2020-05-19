@@ -1,17 +1,17 @@
 package main
 
 import (
-	"course"
+	"chaoxing-sign/course"
+	"chaoxing-sign/global"
+	"chaoxing-sign/task"
 	"encoding/json"
 	"fmt"
-	"global"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"sort"
 	"strconv"
-	"task"
 	"time"
 )
 

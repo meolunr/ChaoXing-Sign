@@ -1,14 +1,14 @@
 package course
 
 import (
+	"chaoxing-sign/global"
+	"chaoxing-sign/task"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"global"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"task"
 )
 
 type Course struct {
@@ -28,8 +28,6 @@ func (course *Course) ObtainTasks() (jsonResp *task.JsonResponse) {
 		params.Set("courseId", course.Id)
 		params.Set("uid", global.Uid)
 
-		jar := global.Client.Jar
-		fmt.Println(&jar)
 		cxUrl.RawQuery = params.Encode()
 		request := global.NewClientRequest(http.MethodGet, cxUrl.String())
 		response, err := global.Client.Do(request)
