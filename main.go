@@ -35,9 +35,8 @@ func main() {
 	ticker := time.NewTicker(time.Second * time.Duration(global.Profile.Interval))
 	defer ticker.Stop()
 	go func() {
-		for range ticker.C {
+		for now := range ticker.C {
 			if rangeErr == nil {
-				now := time.Now()
 				// 当前时间是否不在可签到时间段内
 				if !(now.After(startTime) && now.Before(endTime)) {
 					continue
