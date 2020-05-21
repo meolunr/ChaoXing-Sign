@@ -5,7 +5,6 @@ import (
 	"chaoxing-sign/global"
 	"chaoxing-sign/task"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,21 +26,18 @@ func main() {
 	signedChan = make(chan *task.SignTask)
 	courses := obtainCourses()
 
-	startTime, endTime, rangeErr := getRefreshTimeRange()
 	// 单个课程休眠时间 = 总休眠时间 / 课程数
 	// 避免并发请求所有课程的任务列表
 	delay := time.Second * time.Duration(global.Profile.Interval/len(courses))
-
 	ticker := time.NewTicker(time.Second * time.Duration(global.Profile.Interval))
 	defer ticker.Stop()
 	go func() {
 		for now := range ticker.C {
-			if rangeErr == nil {
-				// 当前时间是否不在可签到时间段内
-				if !(now.After(startTime) && now.Before(endTime)) {
-					continue
-				}
+			if !isItWithinTimeRange(now) {
+				// 当前时间不在可签到时间段内
+				continue
 			}
+
 			for _, item := range courses {
 				startSign(item)
 				time.Sleep(delay)
@@ -92,7 +88,6 @@ func obtainCourses() (courses []*course.Course) {
 			courses = append(courses, item)
 			fmt.Printf("[ %9s ] %s\n", item.Id, item.Name)
 		}
-		fmt.Println("---------------------------------")
 	}
 	return
 }
@@ -165,20 +160,20 @@ func pushServerChan(signTask *task.SignTask) {
 }
 
 /**
-获取签到周期，在此时间范围内可刷新签到任务
+@return 当前是否处于签到时间范围内
 */
-func getRefreshTimeRange() (startTime time.Time, endTime time.Time, err error) {
+func isItWithinTimeRange(now time.Time) bool {
 	currentDate := time.Now().Format("2006-01-02")
-	var startErr, endErr error
-	startTime, startErr = time.ParseInLocation("2006-01-02 15:04",
+	startTime, startErr := time.ParseInLocation("2006-01-02 15:04",
 		fmt.Sprintf("%s %s", currentDate, global.Profile.StartTime), time.Local)
-	endTime, endErr = time.ParseInLocation("2006-01-02 15:04",
+	endTime, endErr := time.ParseInLocation("2006-01-02 15:04",
 		fmt.Sprintf("%s %s", currentDate, global.Profile.EndTime), time.Local)
 
 	if startErr != nil || endErr != nil {
-		err = errors.New("start time or end time format is incorrect")
+		// 配置文件内的时间范围不对或不存在
+		return true
 	}
-	return
+	return now.After(startTime) && now.Before(endTime)
 }
 
 /**
